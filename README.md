@@ -1,4 +1,4 @@
-# filorithm
+# Filorithm Developer Manual
 
 Filorithm is an expressive Python embedded Domain Specific Language (eDSL) designed for high-level file and folder manipulation. By utilizing operator overloading and chainable filtering interfaces, Filorithm abstracts the verbose complexities of standard libraries like `os`, `shutil`, and `pathlib` into clean, intuitive pipeline operations.
 
