@@ -1,28 +1,25 @@
 from pathlib import Path
 from shutil import copy2, copytree, move, rmtree
-from typing import Iterable, Literal
+from typing import Literal
+
+Unit = Literal["kb", "mb", "gb", "tb"]
+
+_MULTIPLIERS = {"kb": 1024, "mb": 1024**2, "gb": 1024**3, "tb": 1024**4}
 
 
-SizeUnit = Literal["kb", "mb", "gb", "tb"]
+def to_bytes(size: int, unit: Unit) -> int:
+    return size * _MULTIPLIERS[unit]
 
 
-_MULTIPLIERS = {
-    "kb": 1024,
-    "mb": 1024**2,
-    "gb": 1024**3,
-    "tb": 1024**4,
-}
+def sanitize_directory(raw: str | Path) -> Path:
+    path = Path(raw)
 
+    if not path.exists():
+        raise FileNotFoundError(f"No such directory: '{path}'")
+    if not path.is_dir():
+        raise NotADirectoryError(f"Not a directory: '{path}'")
 
-def ensure_directory(path: str | Path) -> Path:
-    p = Path(path)
-
-    if not p.exists():
-        raise FileNotFoundError(f"No such directory: '{p}'")
-    if not p.is_dir():
-        raise NotADirectoryError(f"Not a directory: '{p}'")
-
-    return p
+    return path
 
 
 def remove(path: Path) -> None:
@@ -35,24 +32,18 @@ def remove(path: Path) -> None:
         path.unlink()
 
 
-def to_bytes(size: int, unit: SizeUnit) -> int:
-    return size * _MULTIPLIERS[unit]
-
-
-def copy_items(
-    items: Iterable[Path],
-    destination: str | Path,
-    overwrite: bool = False,
-) -> None:
-    dest_dir = ensure_directory(destination)
+def copy_items(items: tuple[Path, ...] | list[Path], destination: str | Path, overwrite: bool = False) -> None:
+    directory = sanitize_directory(destination)
 
     for item in items:
         if not item.exists():
             raise FileNotFoundError(f"No such file or directory: '{item}'")
 
-        target = dest_dir / item.name
+        target = directory / item.name
 
         if target.exists():
+            if target.resolve() == item.resolve():
+                continue
             if not overwrite:
                 raise FileExistsError(f"Destination already exists: '{target}'")
             remove(target)
@@ -63,20 +54,18 @@ def copy_items(
             copy2(item, target)
 
 
-def move_items(
-    items: Iterable[Path],
-    destination: str | Path,
-    overwrite: bool = False,
-) -> None:
-    dest_dir = ensure_directory(destination)
+def move_items(items: tuple[Path, ...] | list[Path], destination: str | Path, overwrite: bool = False) -> None:
+    directory = sanitize_directory(destination)
 
     for item in items:
         if not item.exists():
             raise FileNotFoundError(f"No such file or directory: '{item}'")
 
-        target = dest_dir / item.name
+        target = directory / item.name
 
         if target.exists():
+            if target.resolve() == item.resolve():
+                continue
             if not overwrite:
                 raise FileExistsError(f"Destination already exists: '{target}'")
             remove(target)
@@ -84,7 +73,7 @@ def move_items(
         move(str(item), str(target))
 
 
-def delete_items(items: Iterable[Path]) -> None:
+def delete_items(items: tuple[Path, ...] | list[Path]) -> None:
     for item in items:
         if not item.exists():
             raise FileNotFoundError(f"No such file or directory: '{item}'")
