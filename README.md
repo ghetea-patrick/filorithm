@@ -3,7 +3,7 @@
 # !!! WARNING !!!
 Filorithm is currently mid-renovation. I am tearing down old method names, adding flexible single/multi-item parameter handling, and cleaning up internal logic.
 If you see '...' placeholders or changing signatures, that's intentional.
-## Please hold off on upgrading / using Filorithm until this notice is removed
+## Please hold off on upgrading to this newer version until this notice is removed
 
 
 Filorithm is an expressive Python embedded Domain Specific Language (eDSL) designed for high-level file and folder manipulation. By utilizing operator overloading and chainable filtering interfaces, Filorithm abstracts the verbose complexities of standard libraries like `os`, `shutil`, and `pathlib` into clean, intuitive pipeline operations.
