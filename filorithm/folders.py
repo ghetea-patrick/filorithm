@@ -88,10 +88,17 @@ class Folders:
         return len(self._folders)
 
     def __repr__(self) -> str:
-        return f"<not implemented>"
+        items = [repr(path.name) for path in self._folders]
+
+        if len(items) > 5:
+            preview = ", ".join(items[:5]) + f", ... (+{len(items) - 5} more)"
+        else:
+            preview = ", ".join(items)
+
+        return f"<{self.__class__.__name__} count={len(self._folders)} items=[{preview}]>"
 
     def __str__(self) -> str:
-        return "not implemented"
+        return str(self._folders)
 
     def __rshift__(self, destination: str | Path) -> None:
         directory = sanitize_directory(destination)
