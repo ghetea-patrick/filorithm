@@ -1,5 +1,10 @@
 # Filorithm
 
+> [!CAUTION]
+> As part of a broader cleanup and standardization pass, the module **`file_types.py`** has been renamed to **`families.py`**.
+> A revised README will be published shortly.
+> Thank you for your patience while these updates are rolled out.
+
 ### A Python file utility with slightly fewer file-system-related inconveniences.
 
 Welcome to **Filorithm**, a lightweight Python utility for working with files, directories, filtering, and batch storage operations.
