@@ -1,177 +1,396 @@
 # Filorithm
 
-**Pick the files. Make the move.**
+> [!CAUTION]
+> As part of a broader cleanup and standardization pass, the module **`file_types.py`** has been renamed to **`families.py`**.
+> A revised README will be published shortly.
+> Thank you for your patience while these updates are rolled out.
 
-Filorithm gives everyday file chores a short, chainable Python interface. Select files or folders, narrow the list by name, size, extension, or date, then copy, move, or delete the result. Your Downloads folder has had a good run as an archaeological site.
+### A Python file utility with slightly fewer file-system-related inconveniences.
 
-[What it does](#what-it-does) · [Get started](#get-started) · [A quick example](#a-quick-example) · [How it fits together](#how-it-fits-together) · [Reference](#reference) · [Good to know](#good-to-know)
+Welcome to **Filorithm**, a lightweight Python utility for working with files, directories, filtering, and batch storage operations.
 
-## What it does
+Filorithm is built on top of Python's standard `pathlib` and `shutil` modules while providing a simpler and more expressive interface for common file system operations.
 
-- Collects the immediate files or folders inside a directory.
-- Chains filters for names, extensions, sizes, and modification dates.
-- Copies with `@`, moves with `>>`, and deletes with `~`.
-- Includes reusable extension groups for images, documents, code, and more.
-- Refuses existing destination names by default, unless you enable overwriting.
+Filorithm provides several conveniences:
 
-## Get started
+- **Predefined file type collections** for archives, audio, code, data, documents, executables, fonts, images, and videos.
+- **Chainable filtering interfaces** for finding files and folders by name, size, extension, and modification date.
+- **Readable size constructors** for kilobytes, megabytes, gigabytes, and terabytes.
+- **Operator-overloaded batch operations** for copying, moving, and deleting items.
+- **Automatic path resolution and directory sanitization.**
+- **Unified handling** of single files, multiple files, and entire directories.
+- **Direct integration** with standard Python `datetime` objects for time-based filtering.
 
-> [!NOTE]
-> Use **Python 3.10+**. Filorithm uses only the standard library.
+Filorithm intentionally keeps its implementation small while making common file operations easier to express.
 
-Keep the project modules together on your Python import path:
+It is designed for programmers who want to manipulate files without repeatedly writing nested for-loops and calling `os.path.join()`.
 
-| Module | What lives there |
-| --- | --- |
-| `files.py` | `Files` and its filter builder. |
-| `families.py` | `Folders` and its filter builder. |
-| `file_types.py` | Named extension groups, such as `IMAGES` and `DOCUMENTS`. |
-| `storage.py` | Shared file operations and size conversion. |
+Because apparently writing `os.remove(os.path.join(root, file))` inside a three-level `os.walk()` was considered a healthy way to spend an afternoon.
+
+---
+
+## 1. Installation
+
+Filorithm uses Python's standard library and does not require external dependencies.
+
+Import the required functions and classes from the Filorithm modules.
 
 ```python
-from files import Files
-from families import Folders
-from file_types import IMAGES
+from filorithm.files import Files
+from filorithm.folders import Folders
+from filorithm.file_types import IMAGES, VIDEOS
 ```
 
-## A quick example
+Replace `filorithm` with the module path used by your installation.
 
-With an existing `downloads` directory, copy its image files into an image backup:
+Filorithm is designed to work seamlessly with standard Python `Path` and `datetime` objects.
+
+---
+
+## 2. File Types
+
+Filorithm provides predefined tuples of common file extensions grouped by category.
+
+| Category | Contains |
+|---|---|
+| `ARCHIVES` | 7z, zip, tar, gz, rar, etc. |
+| `AUDIO` | mp3, wav, flac, ogg, etc. |
+| `CODE_ASSEMBLY` | asm, s, nasm, etc. |
+| `CODE_COMPILED` | c, cpp, java, rs, go, etc. |
+| `CODE_INTERPRETED` | py, js, php, rb, ts, etc. |
+| `DATA` | json, csv, xml, yaml, sql, etc. |
+| `DOCUMENTS` | pdf, docx, txt, md, epub, etc. |
+| `EXECUTABLES` | exe, sh, bat, apk, bin, etc. |
+| `FONTS` | ttf, otf, woff, etc. |
+| `IMAGES` | png, jpg, jpeg, svg, gif, etc. |
+| `PRESENTATIONS` | pptx, key, odp, etc. |
+| `SPREADSHEETS` | xlsx, csv, ods, etc. |
+| `SYSTEM` | dll, sys, log, ini, etc. |
+| `VIDEOS` | mp4, mkv, avi, mov, etc. |
+| `WEB` | html, css, jsx, wasm, etc. |
+
+### Example
 
 ```python
-from pathlib import Path
-from files import Files
-from file_types import IMAGES
+from filorithm.file_types import IMAGES
 
-backup = Path("image_backup")
-backup.mkdir(exist_ok=True)
-
-images = Files("downloads").filter().with_extensions(IMAGES).collect()
-
-print([path.name for path in images])
-images @ backup
+print("png" in IMAGES)
 ```
 
-The list shows the selected filenames before the copy. The source files stay where they are. Running the copy again raises `FileExistsError` if those destination names already exist.
+These collections are incredibly useful when filtering directories for specific types of content without having to remember every variation of a JPEG extension.
 
-## How it fits together
+---
 
-### Select, filter, collect, act
+## 3. The Files Class
+
+The `Files` class provides the primary interface for collecting and manipulating files.
+
+Instantiating the class reads the files in the specified directory.
 
 ```python
-from files import Files
+source_files = Files("/path/to/directory")
+```
 
-reports = (
-    Files("downloads")
-    .filter()
-    .with_extensions(("pdf", "csv"))
-    .name_contains("report")
-    .bigger_than(10, "kb")
-    .collect()
+You can also pass raw paths directly:
+
+```python
+source_files = Files(
+    "/path/to/directory",
+    raw=["file1.txt", "file2.txt"]
 )
 ```
 
-`Files(...)` captures the directory's immediate files. `.filter()` starts a filter builder, each filter narrows its selection, and the builder's `.collect()` returns a new `Files` collection.
-
-Folders follow the same pattern:
+Files behaves like an iterable collection, allowing you to access items by index or iterate over them directly.
 
 ```python
-from families import Folders
-
-projects = Folders("workspace").filter().has_prefix("project_").collect()
-print([path.name for path in projects])
+for file in source_files:
+    print(file.name)
 ```
 
-### Choose an operation
+---
 
-| Expression | Action |
-| --- | --- |
-| `selection @ destination` | Copy each selected item into an existing directory. |
-| `selection >> destination` | Move each selected item into an existing directory. |
-| `~selection` | Delete each selected item; selected folders are removed recursively. |
+## 4. Filtering Files
 
-The same operators work on `Files` and `Folders`. Each operation returns `None`.
+The true power of the `Files` class comes from its `filter()` method, which returns a `FilterFiles` builder.
 
-> [!TIP]
-> Inspect a selection before acting on it: iterate over it, check `len(selection)`, or print its `repr()`. Filtering alone does not copy, move, or delete anything.
+The builder provides chainable methods for narrowing down your file selection.
 
-### Work with paths directly
+### 4.1 Extension Filtering
+
+You can filter files by checking their extensions against a list or predefined tuple.
 
 ```python
-from pathlib import Path
-from files import Files
-
-chosen = Files("", raw=[Path("notes.txt"), Path("summary.pdf")])
-print(chosen[0])
-print(len(chosen))
+images = Files("/downloads").filter().with_extensions(IMAGES).collect()
 ```
 
-`raw=` accepts one path or a list or tuple of paths. It bypasses directory scanning; those paths need to exist when you perform an operation.
+Or explicitly exclude them:
 
-### Two kinds of collect
+```python
+safe_files = Files("/downloads").filter().without_extensions(EXECUTABLES).collect()
+```
 
-| Where you call it | What comes back |
-| --- | --- |
-| On a filter builder | A `Files` or `Folders` collection ready for an operation. |
-| On a `Files` or `Folders` collection | Its underlying `list[Path]`. |
+### 4.2 Name Filtering
 
-The list returned by a collection is the actual backing list. Make a copy if you want to edit it independently.
+Files can be filtered by prefix, suffix, regex, or simple text matching.
 
-## Reference
+```python
+reports = Files("/docs").filter().has_prefix("report_").collect()
 
-### Filters shared by files and folders
+old_files = Files("/docs").filter().name_contains("backup").collect()
 
-| Filter | Keeps |
-| --- | --- |
-| `has_prefix(text)`, `has_suffix(text)` | Names beginning or ending with the text. |
-| `name_contains(text)`, `name_lacks(text)` | Names containing or excluding the text. |
-| `name_matches(regex)` | Names with a regex match; accepts a pattern string or compiled pattern. |
-| `keep_only(names)`, `exclude(names)` | Exact names to keep or remove; accepts one name or a list or tuple. |
-| `first(count)`, `last(count)` | A slice of the current selection. |
-| `modified_between(start, end)` | Modification timestamps inside the inclusive range. |
-| `modified_after(date)`, `modified_before(date)` | Modification timestamps strictly after or before a `datetime`. |
+specific = Files("/docs").filter().keep_only(["config.json"]).collect()
+```
 
-Name matching is case-sensitive. Regex filtering uses a search, so add anchors when you want a whole-name match.
+### 4.3 Date Filtering
 
-### File-only filters
+File filtering integrates directly with Python's `datetime`.
 
-| Filter | Keeps |
-| --- | --- |
-| `with_extensions(exts)`, `without_extensions(exts)` | Files matching or excluding one extension or a list or tuple of extensions. |
-| `bigger_than(size, unit)` | Files strictly larger than the limit. |
-| `smaller_than(size, unit)` | Files strictly smaller than the limit. |
-| `between_sizes(min_size, min_unit, max_size, max_unit)` | Files inside the inclusive size range. |
-| `largest(count)`, `smallest(count)` | The requested number of files, ordered by size. |
+```python
+from datetime import datetime
 
-Extensions are case-insensitive and may include a leading dot: `".PNG"` and `"png"` match the same suffix. Matching uses the final suffix, so `archive.tar.gz` has extension `gz`.
+cutoff = datetime(2026, 1, 1)
 
-Size units are lowercase `"kb"`, `"mb"`, `"gb"`, and `"tb"`, using powers of 1024.
+recent = Files("/docs").filter().modified_after(cutoff).collect()
+```
 
-### Extension groups
+### 4.4 Size Filtering
 
-Import these tuples from `file_types.py` and pass them straight into an extension filter:
+Filorithm supports filtering files based on their size on disk.
 
-| Group | Constants |
-| --- | --- |
-| Media | `AUDIO`, `IMAGES`, `VIDEOS`, `FONTS` |
-| Documents and data | `DOCUMENTS`, `PRESENTATIONS`, `SPREADSHEETS`, `DATA` |
-| Code | `CODE_ASSEMBLY`, `CODE_COMPILED`, `CODE_INTERPRETED`, `WEB` |
-| Storage and system files | `ARCHIVES`, `EXECUTABLES`, `SYSTEM` |
+```python
+from filorithm.storage import Unit
 
-### Existing destination names
+large = Files("/media").filter().bigger_than(500, "mb").collect()
+```
 
-Both collection constructors accept `overwrite=False`. The setting carries through filtering and applies to copy and move operations.
+You can also select the absolute largest or smallest files:
 
-With `overwrite=True`, an existing destination item is removed before its replacement is copied or moved. For folders, replacement means replacing the destination tree, rather than merging it.
+```python
+top_ten = Files("/media").filter().largest(10).collect()
+```
 
-## Good to know
+Remember to always call `collect()` at the end of a filter chain to return a new `Files` object containing the results.
 
-> [!CAUTION]
-> `~selection` deletes directly, without a trash step or undo. `overwrite=True` can also remove an existing destination file or directory tree. Check the selected paths and destination before either operation.
+---
 
-- Source and destination directories must already exist. Filorithm does not create them automatically.
-- Directory scanning is shallow. Selecting a folder and copying, moving, or deleting it operates on its whole tree.
-- Directory iteration has no guaranteed sort order. `first()` and `last()` use the current order; `largest()` and `smallest()` explicitly sort by size.
-- Operations process items in sequence. If a later item fails, earlier work is not rolled back.
-- Collections store paths as a snapshot. After a move or deletion, create a fresh collection before doing more work with the changed locations.
+## 5. The Folders Class
 
+The `Folders` class works identically to `Files`, but it targets directories instead.
+
+```python
+folders = Folders("/var/log")
+```
+
+Folders also provides a `filter()` builder.
+
+```python
+backups = Folders("/var/log").filter().name_contains("backup").collect()
+```
+
+You can filter folders by prefix, suffix, name content, regex, and modification date.
+
+---
+
+## 6. Storage Operations
+
+Filorithm overloads standard Python operators to provide an intuitive interface for copying, moving, and deleting items.
+
+These operations apply to both `Files` and `Folders`.
+
+### 6.1 Moving Items (`>>` operator)
+
+The right-shift operator moves files or folders to a destination directory.
+
+```python
+images = Files("/downloads").filter().with_extensions(IMAGES).collect()
+
+images >> "/pictures/memes"
+```
+
+This moves all filtered images to the memes directory.
+
+### 6.2 Copying Items (`@` operator)
+
+The matrix-multiplication operator copies files or folders to a destination directory.
+
+```python
+documents = Files("/work")
+
+documents @ "/backup/work"
+```
+
+This copies everything. No matrix algebra required.
+
+### 6.3 Deleting Items (`~` operator)
+
+The bitwise-invert operator deletes the collected files or folders.
+
+```python
+temp_files = Files("/tmp").filter().name_contains("cache").collect()
+
+~temp_files
+```
+
+This permanently removes the files from the disk. Use with caution.
+
+### 6.4 Overwrite Protection
+
+By default, storage operations will raise a `FileExistsError` if the destination file already exists.
+
+You can override this by explicitly enabling overwrite when instantiating the class.
+
+```python
+Files("/downloads", overwrite=True) >> "/pictures"
+```
+
+Files are innocent. Only overwrite them if you mean it.
+
+---
+
+## 7. Standalone Storage Functions
+
+If you prefer not to use the class abstractions, Filorithm provides raw utility functions in the storage module.
+
+```python
+from filorithm.storage import (
+    to_bytes,
+    remove,
+    copy_items,
+    move_items,
+    delete_items,
+)
+```
+
+### Size Conversion
+
+```python
+bytes = to_bytes(5, "gb")
+```
+
+### Manual Batch Operations
+
+These functions take a list or tuple of `pathlib.Path` objects.
+
+```python
+paths = [Path("file1.txt"), Path("file2.txt")]
+
+copy_items(paths, "/destination")
+move_items(paths, "/destination")
+delete_items(paths)
+```
+
+These are the underlying mechanics that the `Files` and `Folders` classes call automatically.
+
+---
+
+## 8. Complete Example
+
+The following example demonstrates filtering files by size, date, and extension, followed by batch operations.
+
+```python
+from datetime import datetime
+from filorithm.files import Files
+from filorithm.file_types import VIDEOS, IMAGES
+
+# Define a cutoff date
+cutoff = datetime(2026, 1, 1)
+
+# Collect all files in the downloads folder
+downloads = Files("/users/home/downloads", overwrite=True)
+
+# Find large videos
+large_videos = (
+    downloads.filter()
+    .with_extensions(VIDEOS)
+    .bigger_than(1, "gb")
+    .collect()
+)
+
+# Find old images
+old_images = (
+    downloads.filter()
+    .with_extensions(IMAGES)
+    .modified_before(cutoff)
+    .collect()
+)
+
+# Move the videos to an external drive
+large_videos >> "/media/external/movies"
+
+# Delete the old images
+~old_images
+```
+
+The script demonstrates the basic Filorithm workflow:
+
+1. Target a directory.
+2. Filter the contents based on criteria.
+3. Apply a batch file-system operation.
+
+---
+
+## 9. Design Philosophy
+
+Filorithm is designed to provide a readable Python interface over standard `os`, `shutil`, and `pathlib` operations.
+
+The library deliberately embraces operator overloading (`>>`, `@`, `~`) to make batch operations concise and visually distinct from standard method calls.
+
+The architecture separates responsibilities into logical steps:
+
+1. **Target acquisition:** `Files` or `Folders`.
+2. **Condition building:** `FilterFiles` or `FilterFolders`.
+3. **Action execution:** Overloaded operators or storage functions.
+
+Filorithm does not attempt to replace the file system or implement its own storage engine.
+
+It simply makes the existing file-system operations less tedious to orchestrate.
+
+Because apparently `shutil.move()` needed a map, a compass, and three nested loops to find its destination.
+
+---
+
+## 10. Limitations
+
+Filorithm intentionally remains a lightweight wrapper around Python's standard file utilities.
+
+The current implementation does not provide:
+
+- Asynchronous file operations.
+- Automatic symlink resolution toggling.
+- Deep recursive filtering (`os.walk` equivalent through the filter interface).
+- File content inspection.
+- Advanced permission (`chmod`/`chown`) management.
+- File archiving or unzipping directly from the `Files` class.
+
+The current `__str__()` and `__repr__()` methods are placeholders and return:
+
+```text
+not implemented
+```
+
+and:
+
+```text
+<not implemented>
+```
+
+respectively.
+
+These are implementation placeholders rather than formatted representations of the collections.
+
+---
+
+## 11. Final Example
+
+A compact Filorithm program can therefore look like this:
+
+```python
+from filorithm.files import Files
+from filorithm.file_types import CODE_INTERPRETED
+
+scripts = Files("/scripts").filter().with_extensions(CODE_INTERPRETED).collect()
+
+scripts @ "/backup/scripts"
+```
+
+A small interface for doing the things file systems have spent decades making unnecessarily verbose.
