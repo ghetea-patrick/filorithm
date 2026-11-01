@@ -383,21 +383,40 @@ Filorithm stays close to Python's standard filesystem utilities. The current imp
 - Archiving or unzipping directly from `Files`.
 
 > [!NOTE]
-> The collection `__str__()` and `__repr__()` methods are currently placeholders. They do not produce formatted listings of the files or folders.
+> Both `Files` and `Folders` implement `__str__()` and `__repr__()` to provide readable collection output.
 
-`__str__()` returns:
+Use `print()` to display the collection's string representation:
 
-```text
-not implemented
+```python
+files = Files("/path/to/files")
+folders = Folders("/path/to/folders")
+
+print(files)
+print(folders)
 ```
 
-`__repr__()` returns:
+`__str__()` returns the string representation of the underlying list of `Path` objects. The output includes their paths.
 
-```text
-<not implemented>
+Use `repr()` to display a shorter summary of the collection:
+
+```python
+print(repr(files))
+print(repr(folders))
 ```
 
-Iterate over the collection and inspect its items when you need meaningful output, as shown in the collection example.
+`__repr__()` displays the collection's class name, total item count, and item names. It shows up to five names; when the collection contains more than five items, the remaining count is shown instead.
+
+For example, on a POSIX system:
+
+```text
+[PosixPath('/path/to/files/report.txt'), PosixPath('/path/to/files/data.csv')]
+<Files count=2 items=['report.txt', 'data.csv']>
+
+[PosixPath('/path/to/folders/archive'), PosixPath('/path/to/folders/images')]
+<Folders count=2 items=['archive', 'images']>
+```
+
+The path representation may differ between operating systems. The collection summary, however, keeps the same format.
 
 ## Design notes
 
